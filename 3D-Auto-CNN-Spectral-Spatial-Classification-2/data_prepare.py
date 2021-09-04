@@ -163,13 +163,14 @@ def read_data(image_file, label_file, train_nsamples=600, validation_nsamples=30
                                                  (c_col - halfsize):(c_col + halfsize + windowsize % 2), :]
             validation_label[i, :] = one_hot_transform(label[c_row, c_col], number_class)
 
-        train_image = np.transpose(train_image, axes=[0, 3, 1, 2])
-        validation_image = np.transpose(validation_image, axes=[0, 3, 1, 2])
+        train_image = np.transpose(train_image, axes=[0, 3, 1, 2])  # 由(200,32,32,103) → (200,103,32,32)
+        validation_image = np.transpose(validation_image, axes=[0, 3, 1, 2])  # 由(200,32,32,103) → (200,103,32,32)
         train = DataSet(train_image, train_label)
         validation = DataSet(validation_image, validation_label)
 
         return base.Datasets(train=train, validation=validation, test=None), shuffle_number
-
+        # Datasets = collections.namedtuple('Datasets', ['train', 'validation', 'test'])
+        # 这只是一个命名元组，假如返回值赋值给了data, 则可以这样使用 data.train, data.validation, data.test
     else:
         n_batch = test_nsamples // batchnumber  # 两数相除，向下取整
 
@@ -208,3 +209,5 @@ def read_data(image_file, label_file, train_nsamples=600, validation_nsamples=30
             test_image = np.transpose(test_image, axes=[0, 3, 1, 2])
             test = DataSet(test_image, test_label)
             return base.Datasets(train=None, validation=None, test=test)
+            # Datasets = collections.namedtuple('Datasets', ['train', 'validation', 'test'])
+            # 这只是一个命名元组，假如返回值赋值给了data, 则可以这样使用 data.train, data.validation, data.test
