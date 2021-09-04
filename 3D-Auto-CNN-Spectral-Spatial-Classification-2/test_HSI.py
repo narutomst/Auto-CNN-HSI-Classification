@@ -98,11 +98,11 @@ def main(genotype, seed, cut=False):
     # 即，如果i < 0 ，被解释为 n + i，其中 n 是相应维度中的元素数量
     # row=610, col=340, 则上面的切片表达式被解释为NotZeroMask[17:610-16, 17:340-16] = 1
     # 并且，numpy中的切片索引是计头不计尾，即i:j 表示i,i+1,...,(j-1)
-    # 也就是说，整幅图片的上下左右四个方向上，边缘的16行被去掉了。
+    # 也就是说，整幅图片的上下左右四个方向上，边缘的16行、16列被去掉了。
     G = GroundTruth * NotZeroMask  # 对应元素相乘 element-wise product: np.multiply(), 或 *
     # 返回G中非零元素的行索引和列索引值
     [Row, Column] = np.nonzero(G)
-    # 统计样本总数
+    # 统计整张HSI图片上的非零label的样本总数。
     nSample = np.size(Row)
 
     nTrain = args.Train

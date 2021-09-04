@@ -129,10 +129,11 @@ def read_data(image_file, label_file, train_nsamples=600, validation_nsamples=30
     Musk = np.zeros([shape[0], shape[1]])
     Musk[halfsize:shape[0] - halfsize, halfsize:shape[1] - halfsize] = 1
     # 行：0 ~ (halfsize-1)行被屏蔽掉，(shape[0]-halfsize)~(shape[0]-1)行被屏蔽掉，
-    # 列：0 ~ (halfsize-1)行被屏蔽掉，(shape[1]-halfsize)~(shape[1]-1)行被屏蔽掉，
+    # 列：0 ~ (halfsize-1)列被屏蔽掉，(shape[1]-halfsize)~(shape[1]-1)列被屏蔽掉，
     label = label * Musk  # 对应元素相乘
     not_zero_raw, not_zero_col = label.nonzero()
     # 返回G中非零元素的行索引和列索引值
+    # 统计整张HSI图片上的非零label的样本总数。
     number_samples = len(not_zero_raw)
     test_nsamples = number_samples - train_nsamples - validation_nsamples
 
