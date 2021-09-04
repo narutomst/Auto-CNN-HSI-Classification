@@ -21,7 +21,7 @@ import scipy.io as sio
 from model import NetworkHSI
 from sklearn.metrics import confusion_matrix
 from utils import cutout
-from data_prepare import read_data
+from data_prepare import read_data, load_data
 import global_variable as glv
 
 parser = argparse.ArgumentParser("HSI")
@@ -70,27 +70,16 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 def main(genotype, seed, cut=False):
     data, shuffle_number = read_data(image_file, label_file, train_nsamples=200, validation_nsamples=100, windowsize=32,
                                      istraining=True, shuffle_number=None, batchnumber=1000, times=0, rand_seed=seed)
-    # 没有read_data()函数，只能是用散装语句了
-    image = sio.loadmat(image_file)
-    # 取得HSI数据 Pavia = image['pavia']
-    b = image.keys()
-    m = []
-    for i in b:
-        m.append(i)
-    Pavia = image[m[-1]]
-    # 取得标签
-    label = sio.loadmat(label_file)
-    GroundTruth = label['lbs2']
-    # 对HSI数据归一化
-    Pavia = (Pavia - np.min(Pavia)) / (np.max(Pavia) - np.min(Pavia))
+
+    image, label = load_data(image_file, label_file)
     # 取得HSI数据尺寸
-    [nRow, nColumn, nBand] = Pavia.shape
+    [nRow, nColumn, nBand] = image.shape
     # 取得地物类别数量
-    num_class = int(np.max(GroundTruth))
+    num_class = int(np.max(label))
 
     HalfWidth = 16
     Wid = 2 * HalfWidth
-    [row, col] = GroundTruth.shape
+    [row, col] = label.shape
 
     NotZeroMask = np.zeros([row, col])
     NotZeroMask[HalfWidth + 1: -1 - HalfWidth + 1, HalfWidth + 1: -1 - HalfWidth + 1] = 1
@@ -99,7 +88,7 @@ def main(genotype, seed, cut=False):
     # row=610, col=340, 则上面的切片表达式被解释为NotZeroMask[17:610-16, 17:340-16] = 1
     # 并且，numpy中的切片索引是计头不计尾，即i:j 表示i,i+1,...,(j-1)
     # 也就是说，整幅图片的上下左右四个方向上，边缘的16行、16列被去掉了。
-    G = GroundTruth * NotZeroMask  # 对应元素相乘 element-wise product: np.multiply(), 或 *
+    G = label * NotZeroMask  # 对应元素相乘 element-wise product: np.multiply(), 或 *
     # 返回G中非零元素的行索引和列索引值
     [Row, Column] = np.nonzero(G)
     # 统计整张HSI图片上的非零label的样本总数。
@@ -119,8 +108,8 @@ def main(genotype, seed, cut=False):
     HSI_CLASSES = num_class
     # 散装语句到此结束
 
-    np.random.seed(seed)
-    shuffle_number = np.random.permutation(number_samples)
+    # np.random.seed(rand_seed)
+    # shuffle_number = np.random.permutation(number_samples)
 
     if not torch.cuda.is_available():
         logging.info('no gpu device available')
@@ -162,7 +151,7 @@ def main(genotype, seed, cut=False):
                 'set': np.hstack((np.ones([train_nsamples]), 3 * np.ones([validation_nsamples]))).astype(np.int64)}
         for iSample in range(train_nsamples):
 
-            yy = Pavia[
+            yy = image[
                  Row[shuffle_number[iSample]] - HalfWidth: Row[shuffle_number[iSample]] + HalfWidth,
                  Column[shuffle_number[iSample]] - HalfWidth: Column[shuffle_number[iSample]] + HalfWidth, :]
             if args.cutout:
@@ -175,7 +164,7 @@ def main(genotype, seed, cut=False):
             imdb['Labels'][iSample] = G[Row[shuffle_number[iSample]], Column[shuffle_number[iSample]]].astype(np.int64)
 
         for iSample in range(validation_nsamples):
-            imdb['data'][:, :, :, iSample + train_nsamples] = Pavia[
+            imdb['data'][:, :, :, iSample + train_nsamples] = image[
                                                               Row[shuffle_number[iSample + train_nsamples]] - HalfWidth:
                                                               Row[shuffle_number[iSample + train_nsamples]] + HalfWidth,
                                                               Column[shuffle_number[iSample + train_nsamples]] - HalfWidth:
@@ -286,12 +275,12 @@ def test_model(model, numbatch2, seed):
         # imdb['Labels'] = np.zeros([batchva], dtype=np.int64)
         # imdb['set'] = 3* np.ones([batchva], dtype=np.int64)
 
-        global HalfWidth, nBand, batchva, criterion, Pavia, Row, shuffle_number, train_nsamples, validation_nsamples, Column, G
+        global HalfWidth, nBand, batchva, criterion, image, Row, shuffle_number, train_nsamples, validation_nsamples, Column, G
         imdb = {'data': np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, batchva], dtype=np.float32),
                 'Labels': np.zeros([batchva], dtype=np.int64),
                 'set': 3 * np.ones([batchva], dtype=np.int64)}
         for iSample in range(batchva):
-            imdb['data'][:, :, :, iSample] = Pavia[
+            imdb['data'][:, :, :, iSample] = image[
                                              Row[shuffle_number[iSample + train_nsamples + validation_nsamples + i * batchva]] - HalfWidth:
                                              Row[shuffle_number[iSample + train_nsamples + validation_nsamples + i * batchva]] + HalfWidth,
                                              Column[shuffle_number[iSample + train_nsamples + validation_nsamples + i * batchva]] - HalfWidth:
