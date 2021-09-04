@@ -76,7 +76,7 @@ def main(genotype, seed, cut=False):
     [nRow, nColumn, nBand] = image.shape
     # 取得地物类别数量
     num_class = int(np.max(label))
-
+    windowsize = 32
     HalfWidth = windowsize // 2
     # Wid = 2 * HalfWidth
     [row, col] = label.shape
