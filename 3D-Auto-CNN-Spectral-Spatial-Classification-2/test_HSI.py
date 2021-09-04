@@ -77,8 +77,8 @@ def main(genotype, seed, cut=False):
     # 取得地物类别数量
     num_class = int(np.max(label))
 
-    HalfWidth = 16
-    Wid = 2 * HalfWidth
+    HalfWidth = windowsize // 2
+    # Wid = 2 * HalfWidth
     [row, col] = label.shape
 
     NotZeroMask = np.zeros([row, col])
