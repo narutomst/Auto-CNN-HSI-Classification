@@ -149,28 +149,25 @@ def main(genotype, seed, cut=False):
                                  dtype=np.float32),
                 'Labels': np.zeros([train_nsamples + validation_nsamples], dtype=np.int64),
                 'set': np.hstack((np.ones([train_nsamples]), 3 * np.ones([validation_nsamples]))).astype(np.int64)}
-        for iSample in range(train_nsamples):
-
-            yy = image[
-                 Row[shuffle_number[iSample]] - HalfWidth: Row[shuffle_number[iSample]] + HalfWidth,
-                 Column[shuffle_number[iSample]] - HalfWidth: Column[shuffle_number[iSample]] + HalfWidth, :]
+        for i in range(train_nsamples):
+            c_row = Row[shuffle_number[i]]
+            c_col = Column[shuffle_number[i]]
+            yy = image[c_row - HalfWidth: c_row + HalfWidth,
+                       c_col - HalfWidth: c_col + HalfWidth, :]
             if args.cutout:
                 xx = cutout(yy, args.cutout_length, args.num_cut)
-
-                imdb['data'][:, :, :, iSample] = xx
+                imdb['data'][:, :, :, i] = xx
             else:
-                imdb['data'][:, :, :, iSample] = yy
+                imdb['data'][:, :, :, i] = yy
 
-            imdb['Labels'][iSample] = G[Row[shuffle_number[iSample]], Column[shuffle_number[iSample]]].astype(np.int64)
+            imdb['Labels'][i] = G[c_row, c_col].astype(np.int64)
 
-        for iSample in range(validation_nsamples):
-            imdb['data'][:, :, :, iSample + train_nsamples] = image[
-                                                              Row[shuffle_number[iSample + train_nsamples]] - HalfWidth:
-                                                              Row[shuffle_number[iSample + train_nsamples]] + HalfWidth,
-                                                              Column[shuffle_number[iSample + train_nsamples]] - HalfWidth:
-                                                              Column[shuffle_number[iSample + train_nsamples]] + HalfWidth, :]
-            imdb['Labels'][iSample + train_nsamples] = G[Row[shuffle_number[iSample + train_nsamples]],
-                                                         Column[shuffle_number[iSample + train_nsamples]]].astype(np.int64)
+        for i in range(validation_nsamples):
+            c_row = Row[shuffle_number[i + train_nsamples]]
+            c_col = Column[shuffle_number[i + train_nsamples]]
+            imdb['data'][:, :, :, i + train_nsamples] = image[c_row - HalfWidth:c_row + HalfWidth,
+                                                              c_col - HalfWidth:c_col + HalfWidth, :]
+            imdb['Labels'][i + train_nsamples] = G[c_row, c_col].astype(np.int64)
         imdb['Labels'] = imdb['Labels'] - 1
 
         train_dataset = utils.matcifar(imdb, train=True, d=3, medicinal=0)
@@ -178,7 +175,6 @@ def main(genotype, seed, cut=False):
 
         train_queue = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                   shuffle=True, num_workers=0)
-
         valid_queue = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size,
                                                   shuffle=False, num_workers=0)
 
@@ -210,7 +206,7 @@ def train(train_queue, model, criterion, optimizer):
     pre = np.array([])
 
     for step, (input, target) in enumerate(train_queue):
-        global device
+        # global device
         input = input.to(device)
         target = target.to(device)
 
@@ -279,16 +275,12 @@ def test_model(model, numbatch2, seed):
         imdb = {'data': np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, batchva], dtype=np.float32),
                 'Labels': np.zeros([batchva], dtype=np.int64),
                 'set': 3 * np.ones([batchva], dtype=np.int64)}
-        for iSample in range(batchva):
-            imdb['data'][:, :, :, iSample] = image[
-                                             Row[shuffle_number[iSample + train_nsamples + validation_nsamples + i * batchva]] - HalfWidth:
-                                             Row[shuffle_number[iSample + train_nsamples + validation_nsamples + i * batchva]] + HalfWidth,
-                                             Column[shuffle_number[iSample + train_nsamples + validation_nsamples + i * batchva]] - HalfWidth:
-                                             Column[shuffle_number[iSample + train_nsamples + validation_nsamples + i * batchva]] + HalfWidth, :]
-
-            imdb['Labels'][iSample] = G[Row[shuffle_number[iSample + train_nsamples + validation_nsamples + i * batchva]],
-                                        Column[shuffle_number[
-                                            iSample + train_nsamples + validation_nsamples + i * batchva]]].astype(np.int64)
+        for j in range(batchva):
+            c_row = Row[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
+            c_col = Column[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
+            imdb['data'][:, :, :, j] = image[c_row - HalfWidth:c_row + HalfWidth,
+                                                   c_col - HalfWidth:c_col + HalfWidth, :]
+            imdb['Labels'][j] = G[c_row, c_col].astype(np.int64)
 
         imdb['Labels'] = imdb['Labels'] - 1
 
