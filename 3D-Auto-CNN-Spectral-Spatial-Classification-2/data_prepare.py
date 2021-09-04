@@ -152,15 +152,15 @@ def read_data(image_file, label_file, train_nsamples=600, validation_nsamples=30
         for i in range(train_nsamples):
             c_row = non_zero_row[shuffle_number[i]]
             c_col = non_zero_col[shuffle_number[i]]
-            train_image[i, :, :, :] = image[(c_row - halfsize):(c_row + halfsize + 1),
-                                            (c_col - halfsize):(c_col + halfsize + 1), :]
+            train_image[i, :, :, :] = image[(c_row - halfsize):(c_row + halfsize + windowsize % 2),
+                                            (c_col - halfsize):(c_col + halfsize + windowsize % 2), :]
             train_label[i, :] = one_hot_transform(label[c_row, c_col], number_class)
 
         for i in range(validation_nsamples):
             c_row = non_zero_row[shuffle_number[i + train_nsamples]]
             c_col = non_zero_col[shuffle_number[i + train_nsamples]]
-            validation_image[i, :, :, :] = image[(c_row - halfsize):(c_row + halfsize + 1),
-                                                 (c_col - halfsize):(c_col + halfsize + 1), :]
+            validation_image[i, :, :, :] = image[(c_row - halfsize):(c_row + halfsize + windowsize % 2),
+                                                 (c_col - halfsize):(c_col + halfsize + windowsize % 2), :]
             validation_label[i, :] = one_hot_transform(label[c_row, c_col], number_class)
 
         train_image = np.transpose(train_image, axes=[0, 3, 1, 2])
@@ -185,8 +185,8 @@ def read_data(image_file, label_file, train_nsamples=600, validation_nsamples=30
             for i in range(batchnumber_test):
                 c_row = non_zero_row[shuffle_number[batchnumber * times + i + train_nsamples + validation_nsamples]]
                 c_col = non_zero_col[shuffle_number[batchnumber * times + i + train_nsamples + validation_nsamples]]
-                test_image[i, :, :, :] = image[(c_row - halfsize):(c_row + halfsize + 1),
-                                               (c_col - halfsize):(c_col + halfsize + 1), :]
+                test_image[i, :, :, :] = image[(c_row - halfsize):(c_row + halfsize + windowsize % 2),
+                                               (c_col - halfsize):(c_col + halfsize + windowsize % 2), :]
                 test_label[i, :] = one_hot_transform(label[c_row, c_col], number_class)
 
             test_image = np.transpose(test_image, axes=[0, 3, 1, 2])
@@ -201,8 +201,8 @@ def read_data(image_file, label_file, train_nsamples=600, validation_nsamples=30
             for i in range(batchnumber):
                 c_row = non_zero_row[shuffle_number[batchnumber * times + i + train_nsamples + validation_nsamples]]
                 c_col = non_zero_col[shuffle_number[batchnumber * times + i + train_nsamples + validation_nsamples]]
-                test_image[i, :, :, :] = image[(c_row - halfsize):(c_row + halfsize + 1),
-                                               (c_col - halfsize):(c_col + halfsize + 1), :]
+                test_image[i, :, :, :] = image[(c_row - halfsize):(c_row + halfsize + windowsize % 2),
+                                               (c_col - halfsize):(c_col + halfsize + windowsize % 2), :]
                 test_label[i, :] = one_hot_transform(label[c_row, c_col], number_class)
 
             test_image = np.transpose(test_image, axes=[0, 3, 1, 2])
