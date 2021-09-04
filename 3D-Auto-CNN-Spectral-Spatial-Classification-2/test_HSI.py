@@ -103,15 +103,16 @@ def main(genotype, seed, cut=False):
     # 返回G中非零元素的行索引和列索引值
     [Row, Column] = np.nonzero(G)
     # 统计整张HSI图片上的非零label的样本总数。
-    nSample = np.size(Row)
+    # 将以下关键变量的名称与data_prepare中保持一致
+    number_samples = np.size(Row)
 
-    nTrain = args.Train
-    nValidate = args.Valid
-    total = nTrain + nValidate
-    nTest = (nSample - total)
+    train_nsamples = args.Train
+    validation_nsamples = args.Valid
+    # total = train_nsamples + validation_nsamples
+    nTest = (number_samples - train_nsamples - validation_nsamples)
 
-    batchtr = nTrain
-    numbatch1 = nTrain // batchtr
+    batchtr = train_nsamples
+    numbatch1 = train_nsamples // batchtr
     batchva = 1000
     numbatch2 = nTest // batchva
 
@@ -119,7 +120,7 @@ def main(genotype, seed, cut=False):
     # 散装语句到此结束
 
     np.random.seed(seed)
-    RandPerm = np.random.permutation(nSample)
+    RandPerm = np.random.permutation(number_samples)
 
     if not torch.cuda.is_available():
         logging.info('no gpu device available')
@@ -152,13 +153,13 @@ def main(genotype, seed, cut=False):
         labels = np.array([], dtype=np.int64)
 
         # imdb = {}         # 原版
-        # imdb['data'] = np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, nTrain+nValidate], dtype=np.float32)
-        # imdb['Labels'] = np.zeros([nTrain+nValidate], dtype=np.int64)
-        # imdb['set'] = np.hstack((np.ones([nTrain]), 3 * np.ones([nValidate]))).astype(np.int64)
-        imdb = {'data': np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, nTrain + nValidate], dtype=np.float32),
-                'Labels': np.zeros([nTrain + nValidate], dtype=np.int64),
-                'set': np.hstack((np.ones([nTrain]), 3 * np.ones([nValidate]))).astype(np.int64)}
-        for iSample in range(nTrain):
+        # imdb['data'] = np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, train_nsamples+validation_nsamples], dtype=np.float32)
+        # imdb['Labels'] = np.zeros([train_nsamples+validation_nsamples], dtype=np.int64)
+        # imdb['set'] = np.hstack((np.ones([train_nsamples]), 3 * np.ones([validation_nsamples]))).astype(np.int64)
+        imdb = {'data': np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, train_nsamples + validation_nsamples], dtype=np.float32),
+                'Labels': np.zeros([train_nsamples + validation_nsamples], dtype=np.int64),
+                'set': np.hstack((np.ones([train_nsamples]), 3 * np.ones([validation_nsamples]))).astype(np.int64)}
+        for iSample in range(train_nsamples):
 
             yy = Pavia[
                  Row[RandPerm[iSample]] - HalfWidth: Row[RandPerm[iSample]] + HalfWidth,
@@ -172,16 +173,16 @@ def main(genotype, seed, cut=False):
 
             imdb['Labels'][iSample] = G[Row[RandPerm[iSample]], Column[RandPerm[iSample]]].astype(np.int64)
 
-        for iSample in range(nValidate):
-            imdb['data'][:, :, :, iSample + nTrain] = Pavia[
-                                                      Row[RandPerm[iSample + nTrain]] - HalfWidth: Row[RandPerm[
-                                                          iSample + nTrain]]
+        for iSample in range(validation_nsamples):
+            imdb['data'][:, :, :, iSample + train_nsamples] = Pavia[
+                                                      Row[RandPerm[iSample + train_nsamples]] - HalfWidth: Row[RandPerm[
+                                                          iSample + train_nsamples]]
                                                                                                    + HalfWidth,
-                                                      Column[RandPerm[iSample + nTrain]] - HalfWidth: Column[RandPerm[
-                                                          iSample + nTrain]]
+                                                      Column[RandPerm[iSample + train_nsamples]] - HalfWidth: Column[RandPerm[
+                                                          iSample + train_nsamples]]
                                                                                                       + HalfWidth, :]
-            imdb['Labels'][iSample + nTrain] = G[Row[RandPerm[iSample + nTrain]],
-                                                 Column[RandPerm[iSample + nTrain]]].astype(np.int64)
+            imdb['Labels'][iSample + train_nsamples] = G[Row[RandPerm[iSample + train_nsamples]],
+                                                 Column[RandPerm[iSample + train_nsamples]]].astype(np.int64)
         imdb['Labels'] = imdb['Labels'] - 1
 
         train_dataset = utils.matcifar(imdb, train=True, d=3, medicinal=0)
@@ -286,21 +287,21 @@ def test_model(model, numbatch2, seed):
         # imdb['Labels'] = np.zeros([batchva], dtype=np.int64)
         # imdb['set'] = 3* np.ones([batchva], dtype=np.int64)
 
-        global HalfWidth, nBand, batchva, criterion, Pavia, Row, RandPerm, total, Column, G
+        global HalfWidth, nBand, batchva, criterion, Pavia, Row, RandPerm, train_nsamples, validation_nsamples, Column, G
         imdb = {'data': np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, batchva], dtype=np.float32),
                 'Labels': np.zeros([batchva], dtype=np.int64),
                 'set': 3 * np.ones([batchva], dtype=np.int64)}
         for iSample in range(batchva):
             imdb['data'][:, :, :, iSample] = Pavia[
-                                             Row[RandPerm[iSample + total + i * batchva]]
-                                             - HalfWidth: Row[RandPerm[iSample + total + i * batchva]]
-                                                          + HalfWidth, Column[RandPerm[iSample + total + i * batchva]]
+                                             Row[RandPerm[iSample + train_nsamples + validation_nsamples + i * batchva]]
+                                             - HalfWidth: Row[RandPerm[iSample + train_nsamples + validation_nsamples + i * batchva]]
+                                                          + HalfWidth, Column[RandPerm[iSample + train_nsamples + validation_nsamples + i * batchva]]
                                                                        - HalfWidth:Column[RandPerm[
-                iSample + total + i * batchva]]
+                iSample + train_nsamples + validation_nsamples + i * batchva]]
                                                                                    + HalfWidth, :]
 
-            imdb['Labels'][iSample] = G[Row[RandPerm[iSample + total + i * batchva]],
-                                        Column[RandPerm[iSample + total + i * batchva]]].astype(np.int64)
+            imdb['Labels'][iSample] = G[Row[RandPerm[iSample + train_nsamples + validation_nsamples + i * batchva]],
+                                        Column[RandPerm[iSample + train_nsamples + validation_nsamples + i * batchva]]].astype(np.int64)
 
         imdb['Labels'] = imdb['Labels'] - 1
 
