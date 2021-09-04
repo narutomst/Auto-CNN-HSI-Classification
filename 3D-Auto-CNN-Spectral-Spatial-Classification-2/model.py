@@ -103,6 +103,7 @@ class NetworkHSI(nn.Module):  #
         C_prev_prev, C_prev, C_curr = C_curr, C_curr, C
         self.cells = nn.ModuleList()
         reduction_prev = False
+        C_to_auxiliary = C_prev
         for i in range(layers):
             if i in [layers // 3, 2 * layers // 3]:
                 C_curr *= 2
@@ -113,6 +114,7 @@ class NetworkHSI(nn.Module):  #
             reduction_prev = reduction
             self.cells += [cell]
             C_prev_prev, C_prev = C_prev, cell.multiplier * C_curr
+
             if i == 2 * layers // 3:
                 C_to_auxiliary = C_prev
 
