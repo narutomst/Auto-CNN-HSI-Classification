@@ -141,11 +141,7 @@ def main(genotype, seed, cut=False):
         predict = np.array([], dtype=np.int64)
         labels = np.array([], dtype=np.int64)
 
-        # imdb = {}         # 原版
-        # imdb['data'] = np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, train_nsamples+validation_nsamples], dtype=np.float32)
-        # imdb['Labels'] = np.zeros([train_nsamples+validation_nsamples], dtype=np.int64)
-        # imdb['set'] = np.hstack((np.ones([train_nsamples]), 3 * np.ones([validation_nsamples]))).astype(np.int64)
-        imdb = {'data': np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, train_nsamples + validation_nsamples],
+        imdb = {'data': np.zeros([windowsize, windowsize, nBand, train_nsamples + validation_nsamples],
                                  dtype=np.float32),
                 'Labels': np.zeros([train_nsamples + validation_nsamples], dtype=np.int64),
                 'set': np.hstack((np.ones([train_nsamples]), 3 * np.ones([validation_nsamples]))).astype(np.int64)}
@@ -266,20 +262,15 @@ def test_model(model, numbatch2, seed):
     # if epoch == args.epochs:
     # utils.load(model, './result/weights.pt')
     for i in range(numbatch2):
-        # imdb = {}             # 原版
-        # imdb['data'] = np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, batchva], dtype=np.float32)
-        # imdb['Labels'] = np.zeros([batchva], dtype=np.int64)
-        # imdb['set'] = 3* np.ones([batchva], dtype=np.int64)
-
-        global HalfWidth, nBand, batchva, criterion, image, Row, shuffle_number, train_nsamples, validation_nsamples, Column, G
-        imdb = {'data': np.zeros([2 * HalfWidth, 2 * HalfWidth, nBand, batchva], dtype=np.float32),
+        global windowsize, HalfWidth, nBand, batchva, criterion, image, Row, shuffle_number, train_nsamples, validation_nsamples, Column, G
+        imdb = {'data': np.zeros([windowsize, windowsize, nBand, batchva], dtype=np.float32),
                 'Labels': np.zeros([batchva], dtype=np.int64),
                 'set': 3 * np.ones([batchva], dtype=np.int64)}
         for j in range(batchva):
             c_row = Row[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
             c_col = Column[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
             imdb['data'][:, :, :, j] = image[c_row - HalfWidth:c_row + HalfWidth,
-                                                   c_col - HalfWidth:c_col + HalfWidth, :]
+                                             c_col - HalfWidth:c_col + HalfWidth, :]
             imdb['Labels'][j] = G[c_row, c_col].astype(np.int64)
 
         imdb['Labels'] = imdb['Labels'] - 1
