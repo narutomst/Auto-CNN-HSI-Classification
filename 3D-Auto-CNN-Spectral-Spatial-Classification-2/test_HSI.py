@@ -82,18 +82,18 @@ def main(genotype, seed, cut=False):
     [row, col] = label.shape
 
     mask = np.zeros([row, col])
-    mask[HalfWidth + 1: -1 - HalfWidth + 1, HalfWidth + 1: -1 - HalfWidth + 1] = 1
+    mask[HalfWidth: -1 - HalfWidth + 1, HalfWidth: -1 - HalfWidth + 1] = 1
     # mask[17:-16, 17:-16] = 1, 负索引 i 的含义是从数组的末尾开始计数(
     # 即，如果i < 0 ，被解释为 n + i，其中 n 是相应维度中的元素数量
-    # row=610, col=340, 则上面的切片表达式被解释为NotZeroMask[17:610-16, 17:340-16] = 1
+    # row=610, col=340, 则上面的切片表达式被解释为mask[17:610-16, 17:340-16] = 1
     # 并且，numpy中的切片索引是计头不计尾，即i:j 表示i,i+1,...,(j-1)
-    # 也就是说，整幅图片的上下左右四个方向上，边缘的16行、16列被去掉了。
-    G = label * mask  # 对应元素相乘 element-wise product: np.multiply(), 或 *
+    # 也就是说，整幅图片的上下左右四个方向上，边缘的16行、16列被裁剪掉了。
+    label = label * mask  # 对应元素相乘 element-wise product: np.multiply(), 或 *
     # 返回G中非零元素的行索引和列索引值
-    [Row, Column] = np.nonzero(G)
+    [non_zero_row, non_zero_col] = label.nonzero()
     # 统计整张HSI图片上的非零label的样本总数。
     # 将以下关键变量的名称与data_prepare中保持一致
-    number_samples = np.size(Row)
+    number_samples = np.size(non_zero_row)
 
     train_nsamples = args.Train
     validation_nsamples = args.Valid
@@ -148,8 +148,8 @@ def main(genotype, seed, cut=False):
         # imdb['data'].shape: (32, 32, 103, 300); imdb['Labels'].shape:(300,),表示一维数组; imdb['set'].shape:(300,),表示一维数组
         # imdb['set']==1: 200, imdb['set']==2: 0, imdb['set']==3: 100,
         for i in range(train_nsamples):
-            c_row = Row[shuffle_number[i]]
-            c_col = Column[shuffle_number[i]]
+            c_row = non_zero_row[shuffle_number[i]]
+            c_col = non_zero_col[shuffle_number[i]]
             yy = image[c_row - HalfWidth: c_row + HalfWidth,
                        c_col - HalfWidth: c_col + HalfWidth, :]
             if args.cutout:
@@ -158,14 +158,14 @@ def main(genotype, seed, cut=False):
             else:
                 imdb['data'][:, :, :, i] = yy
 
-            imdb['Labels'][i] = G[c_row, c_col].astype(np.int64)
+            imdb['Labels'][i] = label[c_row, c_col].astype(np.int64)
 
         for i in range(validation_nsamples):
-            c_row = Row[shuffle_number[i + train_nsamples]]
-            c_col = Column[shuffle_number[i + train_nsamples]]
+            c_row = non_zero_row[shuffle_number[i + train_nsamples]]
+            c_col = non_zero_col[shuffle_number[i + train_nsamples]]
             imdb['data'][:, :, :, i + train_nsamples] = image[c_row - HalfWidth:c_row + HalfWidth,
                                                               c_col - HalfWidth:c_col + HalfWidth, :]
-            imdb['Labels'][i + train_nsamples] = G[c_row, c_col].astype(np.int64)
+            imdb['Labels'][i + train_nsamples] = label[c_row, c_col].astype(np.int64)
         imdb['Labels'] = imdb['Labels'] - 1
 
         train_dataset = utils.matcifar(imdb, train=True, d=3, medicinal=0)
@@ -264,16 +264,16 @@ def test_model(model, numbatch2, seed):
     # if epoch == args.epochs:
     # utils.load(model, './result/weights.pt')
     for i in range(numbatch2):
-        global windowsize, HalfWidth, nBand, batchva, criterion, image, Row, shuffle_number, train_nsamples, validation_nsamples, Column, G
+        global windowsize, HalfWidth, nBand, batchva, criterion, image, non_zero_row, shuffle_number, train_nsamples, validation_nsamples, non_zero_col, label
         imdb = {'data': np.zeros([windowsize, windowsize, nBand, batchva], dtype=np.float32),
                 'Labels': np.zeros([batchva], dtype=np.int64),
                 'set': 3 * np.ones([batchva], dtype=np.int64)}
         for j in range(batchva):
-            c_row = Row[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
-            c_col = Column[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
+            c_row = non_zero_row[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
+            c_col = non_zero_col[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
             imdb['data'][:, :, :, j] = image[c_row - HalfWidth:c_row + HalfWidth,
                                              c_col - HalfWidth:c_col + HalfWidth, :]
-            imdb['Labels'][j] = G[c_row, c_col].astype(np.int64)
+            imdb['Labels'][j] = label[c_row, c_col].astype(np.int64)
 
         imdb['Labels'] = imdb['Labels'] - 1
 
