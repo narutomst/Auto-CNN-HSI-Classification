@@ -5,6 +5,7 @@ import shutil
 import torchvision.transforms as transforms
 import torch.utils.data as data
 
+
 class AvgrageMeter(object):
 
     def __init__(self):
@@ -151,33 +152,31 @@ class matcifar(data.Dataset):
         self.train = train  # training set or test set
         self.imdb = imdb
         self.d = d
-        self.x1 = np.argwhere(self.imdb['set'] == 1)
-        self.x2 = np.argwhere(self.imdb['set'] == 3)
-        self.x1 = self.x1.flatten()
-        self.x2 = self.x2.flatten()
-        #        if medicinal==4 and d==2:
-        #            self.train_data=self.imdb['data'][self.x1,:]
-        #            self.train_labels=self.imdb['Labels'][self.x1]
-        #            self.test_data=self.imdb['data'][self.x2,:]
-        #            self.test_labels=self.imdb['Labels'][self.x2]
-
+        train_logical_index = self.imdb['set'] == 1
+        test_logical_index = self.imdb['set'] == 3
+        # #        if medicinal==4 and d==2:
+        # #            self.train_data=self.imdb['data'][self.x1,:]
+        # #            self.train_labels=self.imdb['Labels'][self.x1]
+        # #            self.test_data=self.imdb['data'][self.x2,:]
+        # #            self.test_labels=self.imdb['Labels'][self.x2]
+        self.train_labels = self.imdb['Labels'][train_logical_index]
+        self.test_labels = self.imdb['Labels'][test_logical_index]
         if medicinal == 1:
-            self.train_data = self.imdb['data'][self.x1, :, :, :]
-            self.train_labels = self.imdb['Labels'][self.x1]
-            self.test_data = self.imdb['data'][self.x2, :, :, :]
-            self.test_labels = self.imdb['Labels'][self.x2]
+            self.train_data = self.imdb['data'][train_logical_index, :, :, :]
+            self.test_data = self.imdb['data'][test_logical_index, :, :, :]
 
         else:
-            self.train_data = self.imdb['data'][:, :, :, self.x1]
-            self.train_labels = self.imdb['Labels'][self.x1]
-            self.test_data = self.imdb['data'][:, :, :, self.x2]
-            self.test_labels = self.imdb['Labels'][self.x2]
+            self.train_data = self.imdb['data'][:, :, :, train_logical_index]  # imdb['data'].shape: (32, 32, 103, 200);
+            self.test_data = self.imdb['data'][:, :, :, test_logical_index]
             if self.d == 3:
-                self.train_data = self.train_data.transpose((3, 2, 0, 1))  ##(17, 17, 200, 10249)
+                self.train_data = self.train_data.transpose((3, 2, 0, 1))  # 维度变化：(32, 32, 103, 200) → (200, 103, 32, 32)
                 self.test_data = self.test_data.transpose((3, 2, 0, 1))
             else:
                 self.train_data = self.train_data.transpose((3, 0, 2, 1))
                 self.test_data = self.test_data.transpose((3, 0, 2, 1))
+        # # 判断两个ndarray是否完全相同，可以用如下的方法
+        # a = self.imdb['data'][:, :, :, self.imdb['set'] == 1]   # 逻辑索引 logical indexing
+        # print(np.array_equal(self.train_data, a))
 
     def __getitem__(self, index):
         """
