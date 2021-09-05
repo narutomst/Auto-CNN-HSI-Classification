@@ -81,14 +81,14 @@ def main(genotype, seed, cut=False):
     # Wid = 2 * HalfWidth
     [row, col] = label.shape
 
-    NotZeroMask = np.zeros([row, col])
-    NotZeroMask[HalfWidth + 1: -1 - HalfWidth + 1, HalfWidth + 1: -1 - HalfWidth + 1] = 1
-    # NotZeroMask[17:-16, 17:-16] = 1, 负索引 i 的含义是从数组的末尾开始计数(
+    mask = np.zeros([row, col])
+    mask[HalfWidth + 1: -1 - HalfWidth + 1, HalfWidth + 1: -1 - HalfWidth + 1] = 1
+    # mask[17:-16, 17:-16] = 1, 负索引 i 的含义是从数组的末尾开始计数(
     # 即，如果i < 0 ，被解释为 n + i，其中 n 是相应维度中的元素数量
     # row=610, col=340, 则上面的切片表达式被解释为NotZeroMask[17:610-16, 17:340-16] = 1
     # 并且，numpy中的切片索引是计头不计尾，即i:j 表示i,i+1,...,(j-1)
     # 也就是说，整幅图片的上下左右四个方向上，边缘的16行、16列被去掉了。
-    G = label * NotZeroMask  # 对应元素相乘 element-wise product: np.multiply(), 或 *
+    G = label * mask  # 对应元素相乘 element-wise product: np.multiply(), 或 *
     # 返回G中非零元素的行索引和列索引值
     [Row, Column] = np.nonzero(G)
     # 统计整张HSI图片上的非零label的样本总数。
@@ -140,11 +140,13 @@ def main(genotype, seed, cut=False):
 
         predict = np.array([], dtype=np.int64)
         labels = np.array([], dtype=np.int64)
-
+        # 初始化dict变量imdb
         imdb = {'data': np.zeros([windowsize, windowsize, nBand, train_nsamples + validation_nsamples],
                                  dtype=np.float32),
                 'Labels': np.zeros([train_nsamples + validation_nsamples], dtype=np.int64),
                 'set': np.hstack((np.ones([train_nsamples]), 3 * np.ones([validation_nsamples]))).astype(np.int64)}
+        # imdb['data'].shape: (32, 32, 103, 300); imdb['Labels'].shape:(300,),表示一维数组; imdb['set'].shape:(300,),表示一维数组
+        # imdb['set']==1: 200, imdb['set']==2: 0, imdb['set']==3: 100,
         for i in range(train_nsamples):
             c_row = Row[shuffle_number[i]]
             c_col = Column[shuffle_number[i]]
