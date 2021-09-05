@@ -153,11 +153,9 @@ def main(genotype, seed, cut=False):
             yy = image[c_row - HalfWidth: c_row + HalfWidth,
                        c_col - HalfWidth: c_col + HalfWidth, :]
             if args.cutout:
-                xx = cutout(yy, args.cutout_length, args.num_cut)
-                imdb['data'][:, :, :, i] = xx
-            else:
-                imdb['data'][:, :, :, i] = yy
+                yy = cutout(yy, args.cutout_length, args.num_cut)
 
+            imdb['data'][:, :, :, i] = yy
             imdb['Labels'][i] = label[c_row, c_col].astype(np.int64)
 
         for i in range(validation_nsamples):
