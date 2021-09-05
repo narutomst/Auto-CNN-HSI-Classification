@@ -154,13 +154,12 @@ class matcifar(data.Dataset):
         self.d = d
         train_logical_index = self.imdb['set'] == 1
         test_logical_index = self.imdb['set'] == 3
-        # #        if medicinal==4 and d==2:
-        # #            self.train_data=self.imdb['data'][self.x1,:]
-        # #            self.train_labels=self.imdb['Labels'][self.x1]
-        # #            self.test_data=self.imdb['data'][self.x2,:]
-        # #            self.test_labels=self.imdb['Labels'][self.x2]
-        self.train_labels = self.imdb['Labels'][train_logical_index]
+        self.train_labels = self.imdb['Labels'][train_logical_index]  # 使用逻辑索引 logical indexing
         self.test_labels = self.imdb['Labels'][test_logical_index]
+        if medicinal == 4 and d == 2:
+            self.train_data = self.imdb['data'][train_logical_index, :]
+            self.test_data = self.imdb['data'][test_logical_index, :]
+
         if medicinal == 1:
             self.train_data = self.imdb['data'][train_logical_index, :, :, :]
             self.test_data = self.imdb['data'][test_logical_index, :, :, :]
@@ -169,7 +168,8 @@ class matcifar(data.Dataset):
             self.train_data = self.imdb['data'][:, :, :, train_logical_index]  # imdb['data'].shape: (32, 32, 103, 200);
             self.test_data = self.imdb['data'][:, :, :, test_logical_index]
             if self.d == 3:
-                self.train_data = self.train_data.transpose((3, 2, 0, 1))  # 维度变化：(32, 32, 103, 200) → (200, 103, 32, 32)
+                self.train_data = self.train_data.transpose((3, 2, 0, 1))
+                # 维度变化：(32, 32, 103, 200) → (200, 103, 32, 32)
                 self.test_data = self.test_data.transpose((3, 2, 0, 1))
             else:
                 self.train_data = self.train_data.transpose((3, 0, 2, 1))
