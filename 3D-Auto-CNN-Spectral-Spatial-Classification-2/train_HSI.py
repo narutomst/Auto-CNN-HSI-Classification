@@ -169,8 +169,8 @@ def main(seed, cut):
 
         imdb['set'] = np.hstack((np.ones([nTrain]), 3 * np.ones([nValid]))).astype(np.int64)
 
-        train_dataset = utils.matcifar(imdb, train=True, d=3, medicinal=0)
-        valid_dataset = utils.matcifar(imdb, train=False, d=3, medicinal=0)
+        train_dataset = utils.MatCifar(imdb, train=True, d=3, medicinal=0)
+        valid_dataset = utils.MatCifar(imdb, train=False, d=3, medicinal=0)
 
         train_queue = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                   shuffle=True, pin_memory=True, num_workers=0)
@@ -303,4 +303,4 @@ if __name__ == '__main__':
             ff.write(line)
     # ————————————————
     # 修改指定行的方法参考了
-    # 原文链接：https://blog.csdn.net/qq_36072270/article/details/103496152																				   
+    # 原文链接：https://blog.csdn.net/qq_36072270/article/details/103496152
