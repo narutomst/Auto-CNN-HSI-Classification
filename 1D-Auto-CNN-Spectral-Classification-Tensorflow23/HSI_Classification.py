@@ -143,7 +143,7 @@ def train(train_data, model, criterion, optimizer):
 def infer(valid_data, model, criterion):
     objs = utils.AvgrageMeter()
     top1 = utils.AvgrageMeter()
-    model.eval()
+    model.eval()    # 等价于 self.train(mode=False)
     tar = np.array([])
     pre = np.array([])
 
@@ -169,7 +169,7 @@ def infer(valid_data, model, criterion):
 
 
 def test_model(model, shuffle_number, seed):
-    model.eval()
+    model.eval()    # 等价于 self.train(mode=False)
     total_tar = np.array([])
     total_pre = np.array([])
 

@@ -131,7 +131,7 @@ def cutout(img, length, num_band):
     return img
 
 
-class matcifar(data.Dataset):
+class MatCifar(torch.utils.data.Dataset):
     """`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
     Args:
         root (string): Root directory of dataset where directory
@@ -150,7 +150,7 @@ class matcifar(data.Dataset):
     def __init__(self, imdb, train, d, medicinal):
 
         self.train = train  # training set or test set
-        self.imdb = imdb
+        self.imdb = imdb    # {dict}{'data':,'Labels':,'set':}
         self.d = d
         train_logical_index = self.imdb['set'] == 1
         test_logical_index = self.imdb['set'] == 3

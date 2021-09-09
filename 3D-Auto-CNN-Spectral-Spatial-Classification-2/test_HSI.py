@@ -166,9 +166,9 @@ def main(genotype, seed, cut=False):
             imdb['Labels'][i + train_nsamples] = label[c_row, c_col].astype(np.int64)
         imdb['Labels'] = imdb['Labels'] - 1
 
-        train_dataset = utils.matcifar(imdb, train=True, d=3, medicinal=0)
-        valid_dataset = utils.matcifar(imdb, train=False, d=3, medicinal=0)
-
+        train_dataset = utils.MatCifar(imdb, train=True, d=3, medicinal=0)
+        valid_dataset = utils.MatCifar(imdb, train=False, d=3, medicinal=0)
+        # 数据维度变化：(32, 32, 103, 200) → (200, 103, 32, 32)
         train_queue = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                   shuffle=True, num_workers=0)
         valid_queue = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size,
@@ -229,7 +229,7 @@ def train(train_queue, model, criterion, optimizer):
 def infer(valid_queue, model, criterion):
     objs = utils.AvgrageMeter()
     top1 = utils.AvgrageMeter()
-    model.eval()
+    model.eval()    # 等价于 self.train(mode=False)
     tar = np.array([])
     pre = np.array([])
     # global device
@@ -237,7 +237,7 @@ def infer(valid_queue, model, criterion):
         input = input.to(device)
         target = target.to(device)
 
-        logits = model(input)
+        logits, logits_aux = model(input)
         loss = criterion(logits, target)
 
         prec1, t, p = utils.accuracy(logits, target, topk=(1,))
@@ -275,7 +275,7 @@ def test_model(model, numbatch2, seed):
 
         imdb['Labels'] = imdb['Labels'] - 1
 
-        test_dataset = utils.matcifar(imdb, train=False, d=3, medicinal=0)
+        test_dataset = utils.MatCifar(imdb, train=False, d=3, medicinal=0)
 
         test_queue = torch.utils.data.DataLoader(test_dataset, batch_size=50,
                                                  shuffle=False, num_workers=0)
