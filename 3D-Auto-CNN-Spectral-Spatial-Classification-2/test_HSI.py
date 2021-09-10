@@ -31,7 +31,7 @@ parser.add_argument('--learning_rate', type=float, default=0.016, help='init lea
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=100, help='num of training epochs')
+parser.add_argument('--epochs', type=int, default=150, help='num of training epochs')
 parser.add_argument('--init_channels', type=int, default=16, help='num of init channels')
 parser.add_argument('--layers', type=int, default=3, help='total number of layers')
 parser.add_argument('--auxiliary', action='store_true', default=False, help='use auxiliary tower')
@@ -68,8 +68,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def main(genotype, seed, cut=False):
-    data, shuffle_number = read_data(image_file, label_file, train_nsamples=200, validation_nsamples=100, windowsize=32,
-                                     istraining=True, shuffle_number=None, batchnumber=1000, times=0, rand_seed=seed)
+    # data, shuffle_number = read_data(image_file, label_file, train_nsamples=200, validation_nsamples=100, windowsize=32,
+    #                                  istraining=True, shuffle_number=None, batchnumber=1000, times=0, rand_seed=seed)
     train_nsamples = 200
     validation_nsamples = 100
     windowsize = 32,
@@ -97,7 +97,7 @@ def main(genotype, seed, cut=False):
     # 统计整张HSI图片上的非零label的样本总数。
     # 将以下关键变量的名称与data_prepare中保持一致
     number_samples = np.size(non_zero_row)
-
+    shuffle_number = np.random.permutation(number_samples)
     train_nsamples = args.Train
     validation_nsamples = args.Valid
     # total = train_nsamples + validation_nsamples
@@ -195,7 +195,7 @@ def main(genotype, seed, cut=False):
     predict = np.array([], dtype=np.int64)
     labels = np.array([], dtype=np.int64)
     for i in range(numbatch2):
-
+        print('test batch: %d/%d' %(i+1, numbatch2))
         imdb = {'data': np.zeros([windowsize, windowsize, nBand, batchva], dtype=np.float32),
                 'Labels': np.zeros([batchva], dtype=np.int64),
                 'set': 3 * np.ones([batchva], dtype=np.int64)}
@@ -217,8 +217,33 @@ def main(genotype, seed, cut=False):
 
         predict = np.append(predict, pre_v)
         labels = np.append(labels, tar_v)
+
+        # 将剩余的不足 batchva=1000个的样本也用于测试集
+        if i == numbatch2-1:
+            rest_nsamples = len(shuffle_number) - (train_nsamples + validation_nsamples + numbatch2 * batchva)
+            for j in range(rest_nsamples):
+                imdb = {'data': np.zeros([windowsize, windowsize, nBand, rest_nsamples], dtype=np.float32),
+                        'Labels': np.zeros([rest_nsamples], dtype=np.int64),
+                        'set': 3 * np.ones([rest_nsamples], dtype=np.int64)}
+                c_row = non_zero_row[shuffle_number[j + train_nsamples + validation_nsamples + numbatch2 * batchva]]
+                c_col = non_zero_col[shuffle_number[j + train_nsamples + validation_nsamples + numbatch2 * batchva]]
+                imdb['data'][:, :, :, j] = image[c_row - HalfWidth:c_row + HalfWidth,
+                                                 c_col - HalfWidth:c_col + HalfWidth, :]
+                imdb['Labels'][j] = label[c_row, c_col].astype(np.int64)
+
+            imdb['Labels'] = imdb['Labels'] - 1
+
+            test_dataset = utils.MatCifar(imdb, train=False, d=3, medicinal=0)
+
+            test_queue = torch.utils.data.DataLoader(test_dataset, batch_size=50,
+                                                     shuffle=False, num_workers=0)
+
+            valid_acc, valid_obj, tar_v, pre_v = infer(test_queue, model, criterion)
+
+            predict = np.append(predict, pre_v)
+            labels = np.append(labels, tar_v)
     # predict{ndarray}: .shape:(35000,) .dtype:float64, labels{ndarray}: .shape:(35000,) .dtype:float64
-    OA_V = sum(map(lambda x, y: 1 if x == y else 0, predict, labels)) / (numbatch2 * batchva)
+    OA_V = sum(map(lambda x, y: 1 if x == y else 0, predict, labels)) / (len(shuffle_number))
     matrix = confusion_matrix(labels, predict)
 
     logging.info('test_acc= %f' % (OA_V))
