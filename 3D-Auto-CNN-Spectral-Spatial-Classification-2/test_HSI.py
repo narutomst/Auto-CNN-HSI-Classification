@@ -194,7 +194,7 @@ def main(genotype, seed, cut=False):
     utils.load(model, './result/weights.pt')
     predict = np.array([], dtype=np.int64)
     labels = np.array([], dtype=np.int64)
-    for i in range(numbatch2):
+    for i in range(0, numbatch2, 1):            # range(0, numbatch2, numbatch2-1): 用于测试，只执行两次循环
         print('test batch: %d/%d' %(i+1, numbatch2))
         imdb = {'data': np.zeros([windowsize, windowsize, nBand, batchva], dtype=np.float32),
                 'Labels': np.zeros([batchva], dtype=np.int64),
@@ -221,10 +221,10 @@ def main(genotype, seed, cut=False):
         # 将剩余的不足 batchva=1000个的样本也用于测试集
         if i == numbatch2-1:
             rest_nsamples = test_nsamples - numbatch2 * batchva
+            imdb = {'data': np.zeros([windowsize, windowsize, nBand, rest_nsamples], dtype=np.float32),
+                    'Labels': np.zeros([rest_nsamples], dtype=np.int64),
+                    'set': 3 * np.ones([rest_nsamples], dtype=np.int64)}
             for j in range(rest_nsamples):
-                imdb = {'data': np.zeros([windowsize, windowsize, nBand, rest_nsamples], dtype=np.float32),
-                        'Labels': np.zeros([rest_nsamples], dtype=np.int64),
-                        'set': 3 * np.ones([rest_nsamples], dtype=np.int64)}
                 c_row = non_zero_row[shuffle_number[j + train_nsamples + validation_nsamples + numbatch2 * batchva]]
                 c_col = non_zero_col[shuffle_number[j + train_nsamples + validation_nsamples + numbatch2 * batchva]]
                 imdb['data'][:, :, :, j] = image[c_row - HalfWidth:c_row + HalfWidth,
@@ -357,5 +357,5 @@ if __name__ == '__main__':
                    footer='', comments='', encoding=None)
         f.close()
 
-    OA, AA_mean, Kappa, AA = cal_results(matrix)
-    print(OA)
+    # OA, AA_mean, Kappa, AA = cal_results(matrix)
+    # print(OA)
