@@ -31,7 +31,7 @@ parser.add_argument('--learning_rate', type=float, default=0.016, help='init lea
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=150, help='num of training epochs')
+parser.add_argument('--epochs', type=int, default=100, help='num of training epochs')
 parser.add_argument('--init_channels', type=int, default=16, help='num of init channels')
 parser.add_argument('--layers', type=int, default=3, help='total number of layers')
 parser.add_argument('--auxiliary', action='store_true', default=False, help='use auxiliary tower')
@@ -70,7 +70,10 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 def main(genotype, seed, cut=False):
     data, shuffle_number = read_data(image_file, label_file, train_nsamples=200, validation_nsamples=100, windowsize=32,
                                      istraining=True, shuffle_number=None, batchnumber=1000, times=0, rand_seed=seed)
-
+    train_nsamples = 200
+    validation_nsamples = 100
+    windowsize = 32,
+    batchnumber = 1000,
     image, label = load_data(image_file, label_file)
     # 取得HSI数据尺寸
     [nRow, nColumn, nBand] = image.shape
@@ -138,8 +141,6 @@ def main(genotype, seed, cut=False):
         tic = time.time()
         model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
 
-        predict = np.array([], dtype=np.int64)
-        labels = np.array([], dtype=np.int64)
         # 初始化dict变量imdb
         imdb = {'data': np.zeros([windowsize, windowsize, nBand, train_nsamples + validation_nsamples],
                                  dtype=np.float32),
@@ -188,9 +189,39 @@ def main(genotype, seed, cut=False):
             min_val_obj = valid_obj
             utils.save(model, './result/weights.pt')
 
+    # test
+    # matrix = test_model(model, numbatch2, seed)
     utils.load(model, './result/weights.pt')
-    # matrix = test_model(model, shuffle_number, seed)
+    predict = np.array([], dtype=np.int64)
+    labels = np.array([], dtype=np.int64)
+    for i in range(numbatch2):
 
+        imdb = {'data': np.zeros([windowsize, windowsize, nBand, batchva], dtype=np.float32),
+                'Labels': np.zeros([batchva], dtype=np.int64),
+                'set': 3 * np.ones([batchva], dtype=np.int64)}
+        for j in range(batchva):
+            c_row = non_zero_row[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
+            c_col = non_zero_col[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
+            imdb['data'][:, :, :, j] = image[c_row - HalfWidth:c_row + HalfWidth,
+                                             c_col - HalfWidth:c_col + HalfWidth, :]
+            imdb['Labels'][j] = label[c_row, c_col].astype(np.int64)
+
+        imdb['Labels'] = imdb['Labels'] - 1
+
+        test_dataset = utils.MatCifar(imdb, train=False, d=3, medicinal=0)
+
+        test_queue = torch.utils.data.DataLoader(test_dataset, batch_size=50,
+                                                 shuffle=False, num_workers=0)
+
+        valid_acc, valid_obj, tar_v, pre_v = infer(test_queue, model, criterion)
+
+        predict = np.append(predict, pre_v)
+        labels = np.append(labels, tar_v)
+    # predict{ndarray}: .shape:(35000,) .dtype:float64, labels{ndarray}: .shape:(35000,) .dtype:float64
+    OA_V = sum(map(lambda x, y: 1 if x == y else 0, predict, labels)) / (numbatch2 * batchva)
+    matrix = confusion_matrix(labels, predict)
+
+    logging.info('test_acc= %f' % (OA_V))
     return matrix
 
 
@@ -249,47 +280,9 @@ def infer(valid_queue, model, criterion):
 
     return top1.avg, objs.avg, tar, pre
 
-
-def test_model(model, numbatch2, seed):
-    model.eval()
-    total_tar = np.array([])
-    total_pre = np.array([])
-
-    i = 0
-    test_nsamples = 0
-
     # test
     # if epoch == args.epochs:
     # utils.load(model, './result/weights.pt')
-    for i in range(numbatch2):
-        global windowsize, HalfWidth, nBand, batchva, criterion, image, non_zero_row, shuffle_number, train_nsamples, validation_nsamples, non_zero_col, label
-        imdb = {'data': np.zeros([windowsize, windowsize, nBand, batchva], dtype=np.float32),
-                'Labels': np.zeros([batchva], dtype=np.int64),
-                'set': 3 * np.ones([batchva], dtype=np.int64)}
-        for j in range(batchva):
-            c_row = non_zero_row[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
-            c_col = non_zero_col[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
-            imdb['data'][:, :, :, j] = image[c_row - HalfWidth:c_row + HalfWidth,
-                                             c_col - HalfWidth:c_col + HalfWidth, :]
-            imdb['Labels'][j] = label[c_row, c_col].astype(np.int64)
-
-        imdb['Labels'] = imdb['Labels'] - 1
-
-        test_dataset = utils.MatCifar(imdb, train=False, d=3, medicinal=0)
-
-        test_queue = torch.utils.data.DataLoader(test_dataset, batch_size=50,
-                                                 shuffle=False, num_workers=0)
-
-        valid_acc, valid_obj, tar_v, pre_v = infer(test_queue, model, criterion)
-
-        predict = np.append(predict, pre_v)
-        labels = np.append(labels, tar_v)
-
-    OA_V = sum(map(lambda x, y: 1 if x == y else 0, predict, labels)) / (numbatch2 * batchva)
-    matrix = confusion_matrix(labels, predict)
-
-    logging.info('test_acc= %f' % (OA_V))
-    return matrix
 
 
 def cal_results(matrix):
@@ -303,7 +296,7 @@ def cal_results(matrix):
         TPR[i] = matrix[i, i] / np.sum(matrix[i, :])
         sum += np.sum(matrix[i, :]) * np.sum(matrix[:, i])
     OA = number / np.sum(matrix)
-    AA_mean = np.mean(TPR)
+    AA = np.mean(TPR)
     pe = sum / (np.sum(matrix) ** 2)
     Kappa = (OA - pe) / (1 - pe)
     return OA, AA, Kappa, TPR
