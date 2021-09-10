@@ -242,7 +242,8 @@ def main(genotype, seed, cut=False):
 
             predict = np.append(predict, pre_v)
             labels = np.append(labels, tar_v)
-    # predict{ndarray}: .shape:(35000,) .dtype:float64, labels{ndarray}: .shape:(35000,) .dtype:float64
+    # 未使用零头测试样本时： predict{ndarray}: .shape:(35000,) .dtype:float64, labels{ndarray}: .shape:(35000,) .dtype:float64
+    # 将零头测试样本也用上后： predict{ndarray}: .shape:(35435,) .dtype:float64, labels{ndarray}: .shape:(35435,) .dtype:float64
     OA_V = sum(map(lambda x, y: 1 if x == y else 0, predict, labels)) / test_nsamples
     matrix = confusion_matrix(labels, predict)
 
