@@ -220,7 +220,7 @@ def main(genotype, seed, cut=False):
 
         # 将剩余的不足 batchva=1000个的样本也用于测试集
         if i == numbatch2-1:
-            rest_nsamples = len(shuffle_number) - (train_nsamples + validation_nsamples + numbatch2 * batchva)
+            rest_nsamples = test_nsamples - numbatch2 * batchva
             for j in range(rest_nsamples):
                 imdb = {'data': np.zeros([windowsize, windowsize, nBand, rest_nsamples], dtype=np.float32),
                         'Labels': np.zeros([rest_nsamples], dtype=np.int64),
@@ -243,7 +243,7 @@ def main(genotype, seed, cut=False):
             predict = np.append(predict, pre_v)
             labels = np.append(labels, tar_v)
     # predict{ndarray}: .shape:(35000,) .dtype:float64, labels{ndarray}: .shape:(35000,) .dtype:float64
-    OA_V = sum(map(lambda x, y: 1 if x == y else 0, predict, labels)) / (len(shuffle_number))
+    OA_V = sum(map(lambda x, y: 1 if x == y else 0, predict, labels)) / test_nsamples
     matrix = confusion_matrix(labels, predict)
 
     logging.info('test_acc= %f' % (OA_V))
