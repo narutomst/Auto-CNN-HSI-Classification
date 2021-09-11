@@ -62,7 +62,7 @@ glv.set_value('label_file', label_file)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 windowsize = 32
-batchnumber = 1000
+# batchnumber = 1000
 image, label = load_data(image_file, label_file)
 # 取得HSI数据尺寸
 [nRow, nColumn, nBand] = image.shape
@@ -89,7 +89,7 @@ validation_nsamples = args.Valid
 
 
 def main(seed, cut):
-    print('seed:%d' % seed)
+    print('seed:%d', seed)
 
     np.random.seed(seed)
     shuffle_number = np.random.permutation(number_samples)
