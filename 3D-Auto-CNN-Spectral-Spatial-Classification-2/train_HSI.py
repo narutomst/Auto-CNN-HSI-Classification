@@ -61,41 +61,44 @@ glv.set_value('image_file', image_file)
 glv.set_value('label_file', label_file)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+windowsize = 32
+batchnumber = 1000
 image, label = load_data(image_file, label_file)
 # 取得HSI数据尺寸
 [nRow, nColumn, nBand] = image.shape
-
-nTrain = args.Train
-nValid = args.Valid
+# 取得地物类别数量
 num_class = int(np.max(label))
-HSI_CLASSES = num_class
+# windowsize = 32
+HalfWidth = windowsize // 2
 
-HalfWidth = 16
-Wid = 2 * HalfWidth
-
-[row, col] = label.shape
-
-NotZeroMask = np.zeros([row, col])
-NotZeroMask[HalfWidth + 1: -1 - HalfWidth + 1, HalfWidth + 1: -1 - HalfWidth + 1] = 1
-G = label * NotZeroMask
-
-[Row, Column] = np.nonzero(G)
-nSample = np.size(Row)
-
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+mask = np.zeros([nRow, nColumn])
+mask[HalfWidth: -1 - HalfWidth + 1, HalfWidth: -1 - HalfWidth + 1] = 1
+# mask[17:-16, 17:-16] = 1, 负索引 i 的含义是从数组的末尾开始计数(
+# 即，如果i < 0 ，被解释为 n + i，其中 n 是相应维度中的元素数量
+# row=610, col=340, 则上面的切片表达式被解释为mask[17:610-16, 17:340-16] = 1
+# 并且，numpy中的切片索引是计头不计尾，即i:j 表示i,i+1,...,(j-1)
+# 也就是说，整幅图片的上下左右四个方向上，边缘的16行、16列被裁剪掉了。
+label = label * mask  # 对应元素相乘 element-wise product: np.multiply(), 或 *
+# 返回G中非零元素的行索引和列索引值
+[non_zero_row, non_zero_col] = label.nonzero()
+# 统计整张HSI图片上的非零label的样本总数。
+# 将以下关键变量的名称与data_prepare中保持一致
+number_samples = np.size(non_zero_row)
+train_nsamples = args.Train
+validation_nsamples = args.Valid
 
 
 def main(seed, cut):
-    print(seed)
-    args.cutout = cut
+    print('seed:%d' % seed)
+
     np.random.seed(seed)
-    RandPerm = np.random.permutation(nSample)
+    shuffle_number = np.random.permutation(number_samples)
+
     if not torch.cuda.is_available():
         logging.warning('no gpu device available')
         sys.exit(1)
 
-    args.cutout = cut
+    args.cutout = cut   # False
     torch.cuda.set_device(args.gpu)
     cudnn.benchmark = True
     torch.manual_seed(args.manualSeed)
@@ -105,8 +108,8 @@ def main(seed, cut):
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
     # global 字典变量赋值
-    glv.set_value('num_bands', nBand)  # (200, 102, 1, 1)
-    model = Network(nBand, args.init_channels, HSI_CLASSES, args.layers, criterion)
+    glv.set_value('num_bands', nBand)  # (200, 103, 32, 32)
+    model = Network(nBand, args.init_channels, num_class, args.layers, criterion)
     model = model.to(device)
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 
@@ -120,42 +123,41 @@ def main(seed, cut):
     genotype = model.genotype()
     logging.info('genotype = %s', genotype)
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(args.epochs):
 
-        imdb = {'data': np.zeros([Wid, Wid, nBand, nTrain + nValid], dtype=np.float32),
-                'Labels': np.zeros([nTrain + nValid], dtype=np.int64),
-                'set': np.zeros([nTrain + nValid], dtype=np.int64)}
-
-        for iSample in range(nTrain):
-
-            yy = image[
-                 Row[RandPerm[iSample]] - HalfWidth: Row[RandPerm[iSample]] + HalfWidth,
-                 Column[RandPerm[iSample]] - HalfWidth: Column[RandPerm[iSample]] + HalfWidth, :]
+        # 初始化dict变量imdb{}
+        imdb = {'data': np.zeros([windowsize, windowsize, nBand, train_nsamples + validation_nsamples],
+                                 dtype=np.float32),
+                'Labels': np.zeros([train_nsamples + validation_nsamples], dtype=np.int64),
+                'set': np.hstack((np.ones([train_nsamples]), 3 * np.ones([validation_nsamples]))).astype(np.int64)}
+        # imdb['data'].shape: (32, 32, 103, 300); imdb['Labels'].shape:(300,),表示一维数组; imdb['set'].shape:(300,),表示一维数组
+        # imdb['set']==1: 200, imdb['set']==2: 0, imdb['set']==3: 100,
+        for i in range(train_nsamples):
+            c_row = non_zero_row[shuffle_number[i]]
+            c_col = non_zero_col[shuffle_number[i]]
+            yy = image[c_row - HalfWidth: c_row + HalfWidth,
+                       c_col - HalfWidth: c_col + HalfWidth, :]
             if args.cutout:
-                xx = cutout(yy, args.cutout_length, args.num_cut)
+                yy = cutout(yy, args.cutout_length, args.num_cut)
 
-                imdb['data'][:, :, :, iSample] = xx
-            else:
-                imdb['data'][:, :, :, iSample] = yy
+            imdb['data'][:, :, :, i] = yy
+            imdb['Labels'][i] = label[c_row, c_col].astype(np.int64)
 
-            imdb['Labels'][iSample] = G[Row[RandPerm[iSample]], Column[RandPerm[iSample]]].astype(np.int64)
+        for i in range(validation_nsamples):
+            c_row = non_zero_row[shuffle_number[i + train_nsamples]]
+            c_col = non_zero_col[shuffle_number[i + train_nsamples]]
+            imdb['data'][:, :, :, i + train_nsamples] = image[c_row - HalfWidth:c_row + HalfWidth,
+                                                              c_col - HalfWidth:c_col + HalfWidth, :]
+            imdb['Labels'][i + train_nsamples] = label[c_row, c_col].astype(np.int64)
 
-        for iSample in range(nValid):
-            imdb['data'][:, :, :, iSample + nTrain] = image[
-                                                      Row[RandPerm[iSample + nTrain]] - HalfWidth: Row[RandPerm[iSample + nTrain]]
-                                                      + HalfWidth,
-                                                      Column[RandPerm[iSample + nTrain]] - HalfWidth: Column[RandPerm[iSample + nTrain]]
-                                                      + HalfWidth, :]
-            imdb['Labels'][iSample + nTrain] = G[Row[RandPerm[iSample + nTrain]],
-                                                 Column[RandPerm[iSample + nTrain]]].astype(np.int64)
         # print('Data is OK.')
         imdb['Labels'] = imdb['Labels'] - 1
-
-        imdb['set'] = np.hstack((np.ones([nTrain]), 3 * np.ones([nValid]))).astype(np.int64)
+        # 在网上查找的结果是：当有N类时，标签必须是0~(N-1)，而不能是1~N！
+        # 否则会报错RuntimeError: cuda runtime error (710) : device-side assert triggered at
 
         train_dataset = utils.MatCifar(imdb, train=True, d=3, medicinal=0)
         valid_dataset = utils.MatCifar(imdb, train=False, d=3, medicinal=0)
-
+        # 数据维度变化：(32, 32, 103, 200) → (200, 103, 32, 32)
         train_queue = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                   shuffle=True, pin_memory=True, num_workers=0)
         valid_queue = torch.utils.data.DataLoader(valid_dataset, batch_size=args.batch_size,
@@ -174,7 +176,7 @@ def main(seed, cut):
         toc = time.time()
 
         logging.info('Epoch %03d: train_loss = %f, train_acc = %f, val_loss = %f, val_acc = %f, time = %f',
-                     epoch, train_obj, train_acc, valid_obj, valid_acc, toc - tic)
+                     epoch + 1, train_obj, train_acc, valid_obj, valid_acc, toc - tic)
 
         if valid_obj < min_valid_loss:
             genotype = model.genotype()
