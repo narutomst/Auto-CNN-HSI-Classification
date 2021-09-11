@@ -82,9 +82,7 @@ def main(genotype, seed, cut=False):
     # windowsize = 32
     HalfWidth = windowsize // 2
 
-    [row, col] = label.shape
-
-    mask = np.zeros([row, col])
+    mask = np.zeros([nRow, nColumn])
     mask[HalfWidth: -1 - HalfWidth + 1, HalfWidth: -1 - HalfWidth + 1] = 1
     # mask[17:-16, 17:-16] = 1, 负索引 i 的含义是从数组的末尾开始计数(
     # 即，如果i < 0 ，被解释为 n + i，其中 n 是相应维度中的元素数量
