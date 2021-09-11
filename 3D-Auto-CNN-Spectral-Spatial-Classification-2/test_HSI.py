@@ -70,18 +70,18 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 def main(genotype, seed, cut=False):
     # data, shuffle_number = read_data(image_file, label_file, train_nsamples=200, validation_nsamples=100, windowsize=32,
     #                                  istraining=True, shuffle_number=None, batchnumber=1000, times=0, rand_seed=seed)
-    train_nsamples = 200
-    validation_nsamples = 100
-    windowsize = 32,
-    batchnumber = 1000,
+    # train_nsamples = 200
+    # validation_nsamples = 100
+    windowsize = 32
+    batchnumber = 1000
     image, label = load_data(image_file, label_file)
     # 取得HSI数据尺寸
     [nRow, nColumn, nBand] = image.shape
     # 取得地物类别数量
     num_class = int(np.max(label))
-    windowsize = 32
+    # windowsize = 32
     HalfWidth = windowsize // 2
-    # Wid = 2 * HalfWidth
+
     [row, col] = label.shape
 
     mask = np.zeros([row, col])
@@ -100,13 +100,12 @@ def main(genotype, seed, cut=False):
     shuffle_number = np.random.permutation(number_samples)
     train_nsamples = args.Train
     validation_nsamples = args.Valid
-    # total = train_nsamples + validation_nsamples
     test_nsamples = (number_samples - train_nsamples - validation_nsamples)
 
     batchtr = train_nsamples
     numbatch1 = train_nsamples // batchtr
-    batchva = 1000
-    numbatch2 = test_nsamples // batchva
+    # batchnumber = 1000
+    numbatch2 = test_nsamples // batchnumber
 
     HSI_CLASSES = num_class
     # 散装语句到此结束
@@ -196,12 +195,12 @@ def main(genotype, seed, cut=False):
     labels = np.array([], dtype=np.int64)
     for i in range(0, numbatch2, 1):            # range(0, numbatch2, numbatch2-1): 用于测试，只执行两次循环
         print('test batch: %d/%d' %(i+1, numbatch2))
-        imdb = {'data': np.zeros([windowsize, windowsize, nBand, batchva], dtype=np.float32),
-                'Labels': np.zeros([batchva], dtype=np.int64),
-                'set': 3 * np.ones([batchva], dtype=np.int64)}
-        for j in range(batchva):
-            c_row = non_zero_row[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
-            c_col = non_zero_col[shuffle_number[j + train_nsamples + validation_nsamples + i * batchva]]
+        imdb = {'data': np.zeros([windowsize, windowsize, nBand, batchnumber], dtype=np.float32),
+                'Labels': np.zeros([batchnumber], dtype=np.int64),
+                'set': 3 * np.ones([batchnumber], dtype=np.int64)}
+        for j in range(batchnumber):
+            c_row = non_zero_row[shuffle_number[j + train_nsamples + validation_nsamples + i * batchnumber]]
+            c_col = non_zero_col[shuffle_number[j + train_nsamples + validation_nsamples + i * batchnumber]]
             imdb['data'][:, :, :, j] = image[c_row - HalfWidth:c_row + HalfWidth,
                                              c_col - HalfWidth:c_col + HalfWidth, :]
             imdb['Labels'][j] = label[c_row, c_col].astype(np.int64)
@@ -218,15 +217,15 @@ def main(genotype, seed, cut=False):
         predict = np.append(predict, pre_v)
         labels = np.append(labels, tar_v)
 
-        # 将剩余的不足 batchva=1000个的样本也用于测试集
+        # 将剩余的不足 batchnumber=1000个的样本也用于测试集
         if i == numbatch2-1:
-            rest_nsamples = test_nsamples - numbatch2 * batchva
+            rest_nsamples = test_nsamples - numbatch2 * batchnumber
             imdb = {'data': np.zeros([windowsize, windowsize, nBand, rest_nsamples], dtype=np.float32),
                     'Labels': np.zeros([rest_nsamples], dtype=np.int64),
                     'set': 3 * np.ones([rest_nsamples], dtype=np.int64)}
             for j in range(rest_nsamples):
-                c_row = non_zero_row[shuffle_number[j + train_nsamples + validation_nsamples + numbatch2 * batchva]]
-                c_col = non_zero_col[shuffle_number[j + train_nsamples + validation_nsamples + numbatch2 * batchva]]
+                c_row = non_zero_row[shuffle_number[j + train_nsamples + validation_nsamples + numbatch2 * batchnumber]]
+                c_col = non_zero_col[shuffle_number[j + train_nsamples + validation_nsamples + numbatch2 * batchnumber]]
                 imdb['data'][:, :, :, j] = image[c_row - HalfWidth:c_row + HalfWidth,
                                                  c_col - HalfWidth:c_col + HalfWidth, :]
                 imdb['Labels'][j] = label[c_row, c_col].astype(np.int64)

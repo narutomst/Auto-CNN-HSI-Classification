@@ -19,7 +19,7 @@ import scipy.io as sio
 from model_search import Network
 from architect import Architect
 from utils import cutout
-
+from data_prepare import read_data, load_data
 import global_variable as glv
 glv._init()
 
