@@ -132,7 +132,7 @@ def main(genotype, seed, cut=False):
         tic = time.time()
         model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
 
-        # 初始化dict变量imdb
+        # 初始化dict变量imdb{}
         imdb = {'data': np.zeros([windowsize, windowsize, nBand, train_nsamples + validation_nsamples],
                                  dtype=np.float32),
                 'Labels': np.zeros([train_nsamples + validation_nsamples], dtype=np.int64),
@@ -157,6 +157,8 @@ def main(genotype, seed, cut=False):
                                                               c_col - HalfWidth:c_col + HalfWidth, :]
             imdb['Labels'][i + train_nsamples] = label[c_row, c_col].astype(np.int64)
         imdb['Labels'] = imdb['Labels'] - 1
+        # 在网上查找的结果是：当有N类时，标签必须是0~(N-1)，而不能是1~N！
+        # 否则会报错RuntimeError: cuda runtime error (710) : device-side assert triggered at
 
         train_dataset = utils.MatCifar(imdb, train=True, d=3, medicinal=0)
         valid_dataset = utils.MatCifar(imdb, train=False, d=3, medicinal=0)
