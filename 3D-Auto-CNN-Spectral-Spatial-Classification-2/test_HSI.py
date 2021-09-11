@@ -299,10 +299,6 @@ def infer(valid_queue, model, criterion):
 
     return top1.avg, objs.avg, tar, pre
 
-    # test
-    # if epoch == args.epochs:
-    # utils.load(model, './result/weights.pt')
-
 
 def cal_results(matrix):
     shape = np.shape(matrix)
