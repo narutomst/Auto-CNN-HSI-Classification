@@ -105,11 +105,7 @@ def main(genotype, seed, cut=False):
     # batchnumber = 1000
     numbatch2 = test_nsamples // batchnumber
 
-    HSI_CLASSES = num_class
     # 散装语句到此结束
-
-    # np.random.seed(rand_seed)
-    # shuffle_number = np.random.permutation(number_samples)
 
     if not torch.cuda.is_available():
         logging.info('no gpu device available')
@@ -122,7 +118,7 @@ def main(genotype, seed, cut=False):
     cudnn.enabled = True
     torch.cuda.manual_seed(args.manualSeed)
 
-    model = NetworkHSI(nBand, args.init_channels, HSI_CLASSES, args.layers, args.auxiliary, genotype)
+    model = NetworkHSI(nBand, args.init_channels, num_class, args.layers, args.auxiliary, genotype)
     model = model.cuda()
 
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
