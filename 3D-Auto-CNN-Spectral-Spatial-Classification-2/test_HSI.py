@@ -68,10 +68,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def main(genotype, seed, cut=False):
-    # data, shuffle_number = read_data(image_file, label_file, train_nsamples=200, validation_nsamples=100, windowsize=32,
-    #                                  istraining=True, shuffle_number=None, batchnumber=1000, times=0, rand_seed=seed)
-    # train_nsamples = 200
-    # validation_nsamples = 100
+
     windowsize = 32
     batchnumber = 1000
     image, label = load_data(image_file, label_file)
@@ -95,6 +92,7 @@ def main(genotype, seed, cut=False):
     # 统计整张HSI图片上的非零label的样本总数。
     # 将以下关键变量的名称与data_prepare中保持一致
     number_samples = np.size(non_zero_row)
+    np.random.seed(seed)
     shuffle_number = np.random.permutation(number_samples)
     train_nsamples = args.Train
     validation_nsamples = args.Valid
