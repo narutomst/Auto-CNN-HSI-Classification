@@ -59,36 +59,25 @@ label_file = r'C:\Matlab练习\duogun\PaviaU_gt.mat'
 # 在本py文件内的使用：定义跨模块全局变量，赋值
 glv.set_value('image_file', image_file)
 glv.set_value('label_file', label_file)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-image = sio.loadmat(image_file)
-# Pavia = image['Pavia']  # 原版
-b = image.keys()
-m = []
-for i in b:
-    m.append(i)
-Pavia = image[m[-1]]
-
-label = sio.loadmat(label_file)
-# GroundTruth = label['groundtruth']  # 原版
-GroundTruth = label['lbs2']
-
-Pavia = (Pavia - np.min(Pavia)) / (np.max(Pavia) - np.min(Pavia))
-
-[nRow, nColumn, nBand] = Pavia.shape
+image, label = load_data(image_file, label_file)
+# 取得HSI数据尺寸
+[nRow, nColumn, nBand] = image.shape
 
 nTrain = args.Train
 nValid = args.Valid
-num_class = int(np.max(GroundTruth))
+num_class = int(np.max(label))
 HSI_CLASSES = num_class
 
 HalfWidth = 16
 Wid = 2 * HalfWidth
 
-[row, col] = GroundTruth.shape
+[row, col] = label.shape
 
 NotZeroMask = np.zeros([row, col])
 NotZeroMask[HalfWidth + 1: -1 - HalfWidth + 1, HalfWidth + 1: -1 - HalfWidth + 1] = 1
-G = GroundTruth * NotZeroMask
+G = label * NotZeroMask
 
 [Row, Column] = np.nonzero(G)
 nSample = np.size(Row)
@@ -133,18 +122,13 @@ def main(seed, cut):
 
     for epoch in range(1, args.epochs + 1):
 
-        # imdb = {}	# 原版
-        # imdb['data'] = np.zeros([Wid, Wid, nBand, nTrain + nValid], dtype=np.float32)
-        # imdb['Labels'] = np.zeros([nTrain + nValid], dtype=np.int64)
-        # imdb['set'] = np.zeros([nTrain + nValid], dtype=np.int64)
-
         imdb = {'data': np.zeros([Wid, Wid, nBand, nTrain + nValid], dtype=np.float32),
                 'Labels': np.zeros([nTrain + nValid], dtype=np.int64),
                 'set': np.zeros([nTrain + nValid], dtype=np.int64)}
 
         for iSample in range(nTrain):
 
-            yy = Pavia[
+            yy = image[
                  Row[RandPerm[iSample]] - HalfWidth: Row[RandPerm[iSample]] + HalfWidth,
                  Column[RandPerm[iSample]] - HalfWidth: Column[RandPerm[iSample]] + HalfWidth, :]
             if args.cutout:
@@ -157,7 +141,7 @@ def main(seed, cut):
             imdb['Labels'][iSample] = G[Row[RandPerm[iSample]], Column[RandPerm[iSample]]].astype(np.int64)
 
         for iSample in range(nValid):
-            imdb['data'][:, :, :, iSample + nTrain] = Pavia[
+            imdb['data'][:, :, :, iSample + nTrain] = image[
                                                       Row[RandPerm[iSample + nTrain]] - HalfWidth: Row[RandPerm[iSample + nTrain]]
                                                       + HalfWidth,
                                                       Column[RandPerm[iSample + nTrain]] - HalfWidth: Column[RandPerm[iSample + nTrain]]
