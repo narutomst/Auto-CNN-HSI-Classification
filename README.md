@@ -1,4 +1,4 @@
-# Auto-CNN-HSI-Classification
+# Auto-CNN-HSI-Classification(Based on Python 3.7.5, Pytorch 1.7.1)
 Code for the paper "Automatic Design of Convolutional Neural Network for Hyperspectral Image Classification"(https://ieeexplore.ieee.org/document/8703410)
 
 reference paper:
@@ -12,4 +12,4 @@ reference code:
 2.https://github.com/YushiChen/Auto-CNN-HSI-Classification
 
 Added a lot of improvements on the basis of YushiChen / Auto-CNN-HSI-Classification
-
+Based on Python 3.7.5, Pytorch 1.7.1
